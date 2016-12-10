@@ -16,6 +16,8 @@ var player = {
   baseSpeed: 2,
   speed: 2,
   distress: 0,
+  direction: 'left',
+  isWalking: false,
 }
 
 var guard1 = {
@@ -52,6 +54,7 @@ var reset = function () {
   player.y = 400
   player.distress = 0
   player.speed = player.baseSpeed
+  player.isWalking = false
 
   guard1.isOnIt = false
   guard1.isAtDoor = false
@@ -90,8 +93,10 @@ module.exports = {
     // d-pad
     if (pad.buttons[14].pressed) {
       player.x += -player.speed
+      player.direction = 'left'
     } else if (pad.buttons[15].pressed) {
       player.x += player.speed
+      player.direction = 'right'
     }
 
     if (pad.buttons[0].pressed) {
@@ -100,15 +105,15 @@ module.exports = {
       player.y += player.speed
     }
 
-    // keep inside screen
-    if (player.x < 0) {
-      player.x = 0
-    } else if (player.x + player.w > canvasWidth) {
-      player.x = canvasWidth - player.w
+    // keep inside
+    if (player.x < 48) {
+      player.x = 48
+    } else if (player.x + player.w > canvasWidth - 48) {
+      player.x = canvasWidth - player.w - 48
     }
 
-    if (player.y < 0) {
-      player.y = 0
+    if (player.y < 64) {
+      player.y = 64
     } else if (player.y + player.h > canvasHeight) {
       player.y = canvasHeight - player.h
     }
@@ -119,8 +124,10 @@ module.exports = {
         pad.buttons[13].pressed ||
         pad.buttons[0].pressed) {
       player.distress++
+      player.isWalking = true
     } else if (player.distress > 0) {
       player.distress -= 6
+      player.isWalking = false
     }
 
     // trigger guard
@@ -157,17 +164,15 @@ module.exports = {
     }
 
     // update sprites
-    images.gubbe_stand_sprite.pause()
-    if (Math.random() < 0.1) {
-      images.gubbe_stand_sprite.play()
-    }
-    images.gubbe_stand_sprite.tick()
+    images.gubbe_stand_sprite.tick((1000 / 60) * Math.random())
+    images.gubbe_walking_sprite.tick((1000 / 60) * player.speed / 1.8)
 
-    
   },
   draw: function (renderingContext) {
     renderingContext.fillStyle = '#B0B4BA'
     renderingContext.fillRect(0, 0, canvasWidth, canvasHeight)
+
+    renderingContext.drawImage(images.bg, 0, 0)
 
     if (player.distress > 450) {
       renderingContext.fillStyle = '#DD0000'
@@ -183,10 +188,20 @@ module.exports = {
     renderingContext.fillRect(player.x, player.y, player.w, player.h)
 
     renderingContext.save()
-    renderingContext.translate(player.x, player.y - 64)
-    images.gubbe_stand_sprite.draw(renderingContext)
-    renderingContext.restore()
+    if (player.direction === 'left') {
+      renderingContext.translate(player.x + 64, player.y - 64)
+      renderingContext.scale(-1, 1)
+    } else {
+      renderingContext.translate(player.x, player.y - 64)
+    }
 
+    if (player.isWalking) {
+      images.gubbe_walking_sprite.draw(renderingContext)
+    } else {
+      images.gubbe_stand_sprite.draw(renderingContext)
+    }
+
+    renderingContext.restore()
 
     if (guard1.isAtDoor) {
       renderingContext.fillStyle = '#0044AA'
