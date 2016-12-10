@@ -11,7 +11,7 @@ var wakingUpCount = wakingUpTime
 
 var winningAnimationPlaying = false
 
-var guardCount = 1
+var guardCount = 3
 
 var isOnIt = false
 var isAtDoor = false
@@ -34,8 +34,9 @@ var guardFactory = function () {
     shotCooldownStart: 67,
     shotCooldown: 67,
     x: 128 + 44 + (64 * Math.random()),
-    y: 32,
-    speed: 1.2 + Math.random(),
+    y: 64 * Math.random(),
+    angle: 0,
+    speed: 1 + Math.random() * 0.5,
     isWalking: false,
     direction: 'right',
     isTasering: false,
@@ -60,6 +61,28 @@ var shotFactory = function (x, y, targetX, targetY) {
   }
 }
 
+var getClosestGuard = function (_guard) {
+  var dist = Math.sqrt(1024 * 1024 + 768 * 768)
+  var closestGuard = guards[0]
+  for (var i = 0; i < guards.length; i++) {
+    var guard = guards[i]
+    var dx = guard.x - _guard.x
+    var dy = guard.y - _guard.y
+    var distToGuard = Math.sqrt(dx * dx + dy * dy)
+    if (_guard !== guard && distToGuard < dist) {
+      dist = distToGuard
+      closestGuard = guard
+    }
+  }
+  if (closestGuard === _guard) {
+    return null
+  }
+  return {
+    dist: dist,
+    guard: closestGuard,
+  }
+}
+
 var isPointInsideRect = function (x, y, rx, ry, rw, rh) {
   return x > rx && x < rx + rw &&
       y > ry && y < ry + rh
@@ -77,9 +100,7 @@ var reset = function () {
   player.caughtBy = null
 
   guards = []
-  for (var i = 0; i < guardCount; i++) {
-    guards.push(guardFactory())
-  }
+  guards.push(guardFactory()) // add the first guard
 
   shots = []
 
@@ -200,12 +221,41 @@ module.exports = {
         if (guard.shotCooldown < 0) {
           shots.push(shotFactory(guard.x, guard.y, player.x, player.y))
           guard.shotCooldown = guard.shotCooldownStart
-        } else if (guard.shotCooldown > guard.shotCooldownStart / 2) {
+
+          // calc next walk angle
           var dx = player.x - guard.x
           var dy = player.y - guard.y
           var angle = Math.atan2(dy, dx)
-          guard.x += Math.cos(angle) * guard.speed
-          guard.y += Math.sin(angle) * guard.speed
+
+          var closestObj = getClosestGuard(guard)
+
+          if (closestObj !== null && closestObj.dist < 100 + 200 * Math.random()) {
+            dx = closestObj.guard.x - guard.x
+            dy = closestObj.guard.y - guard.y
+            angle = Math.atan2(dy, dx) + Math.PI
+          }
+
+          guard.angle = angle
+
+        } else if (guard.shotCooldown > guard.shotCooldownStart / 2) {
+          
+          var dx = Math.cos(guard.angle) * guard.speed
+          guard.x += dx
+          guard.y += Math.sin(guard.angle) * guard.speed
+
+          // keep inside
+          if (guard.x < 64) {
+            guard.x = 64
+          } else if (guard.x + 32 > canvasWidth - 64) {
+            guard.x = canvasWidth - 64
+          }
+
+          if (guard.y < 96) {
+            guard.y = 96
+          } else if (guard.y + 64 > canvasHeight) {
+            guard.y = canvasHeight - 64
+          }
+
           guard.guard_walking_sprite.tick(1000/60)
           guard.isWalking = true
 
@@ -213,6 +263,19 @@ module.exports = {
             guard.direction = 'right'
           } else {
             guard.direction = 'left'
+          }
+
+        }
+
+        if (!guard.isWalking) {
+          var dx = player.x - guard.x
+          var dy = player.y - guard.y
+          var angle = Math.atan2(dy, dx)
+          angle = Math.abs(angle)
+          if (angle > Math.PI * 0.5 && angle < Math.PI * 1.5) {
+            guard.direction = 'left'
+          } else {
+            guard.direction = 'right'
           }
         }
 
@@ -234,6 +297,10 @@ module.exports = {
         }
 
         guard.shotCooldown--
+      }
+
+      if (guards.length < guardCount && Math.random() < 0.05) {
+        guards.push(guardFactory())
       }
     }
 
@@ -333,8 +400,9 @@ module.exports = {
 
     if (isAtDoor) {
 
-      // renderingContext.fillStyle = '#FFFF00'
-      // renderingContext.fillRect(128 + 44, 32, 72, 64)
+      guards = guards.sort(function (a, b) {
+        return a.y > b.y
+      })
 
       for (var i = 0; i < guards.length; i++) {
         var guard = guards[i]
@@ -353,8 +421,8 @@ module.exports = {
           guard.guard_walking_sprite.draw(renderingContext)
           renderingContext.restore()
         } else {
+          renderingContext.drawImage(images.guard_stand, 0, 0)
           renderingContext.restore()
-          renderingContext.drawImage(images.guard_stand, guard.x, guard.y - 64)
         }
       }
 
