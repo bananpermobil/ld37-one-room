@@ -6,13 +6,15 @@ var canvasWidth = 1024
 var canvasHeight = 768
 
 var isWakingUp = false
-var wakingUpTime = 60 * 2
+var wakingUpTime = 60 * 4.6
 var wakingUpCount = wakingUpTime
 
-var isFallingAsleep = false
 var winningAnimationPlaying = false
 
-var guardCount = 1
+var guardCount = 2
+
+var isOnIt = false
+var isAtDoor = false
 
 var player = {
   x: 0,
@@ -24,23 +26,27 @@ var player = {
   distress: 0,
   direction: 'left',
   isWalking: false,
+  caughtBy: null,
 }
 
 var guardFactory = function () {
-  return JSON.parse(JSON.stringify({
-    isOnIt: false,
-    isAtDoor: false,
+  var guard = JSON.parse(JSON.stringify({
     shotCooldownStart: 67,
     shotCooldown: 67,
-    x: 128 + 44,
+    x: 128 + 44 + (64 * Math.random()),
     y: 32,
-    speed: 1.2,
+    speed: 1.2 + Math.random(),
     isWalking: false,
     direction: 'right',
+    isTasering: false,
   }))
+
+  guard.guard_walking_sprite = SpriteSheet.new(images.guard_walking, images.guard_walking_sprite_template)
+
+  return guard
 }
 
-var guard1 = guardFactory()
+var guards = []
 
 var shotFactory = function (x, y, targetX, targetY) {
   var dx = targetX - x
@@ -67,8 +73,13 @@ var reset = function () {
   player.distress = 0
   player.speed = player.baseSpeed
   player.isWalking = false
+  player.direction = 'left'
+  player.caughtBy = null
 
-  guard1 = guardFactory()
+  guards = []
+  for (var i = 0; i < guardCount; i++) {
+    guards.push(guardFactory())
+  }
 
   shots = []
 
@@ -80,7 +91,13 @@ var reset = function () {
   images.freedom_sprite.pause()
   images.freedom_sprite.currentFrame = 0
 
-  isFallingAsleep = false
+  images.gubbe_standup_sprite.currentFrame = 0
+  images.gubbe_standup_sprite.play()
+
+  isOnIt = false
+  isAtDoor = false
+  isWakingUp = true
+
   winningAnimationPlaying = false
 
   wakingUpCount = wakingUpTime
@@ -90,7 +107,6 @@ module.exports = {
   name: 'game',
   create: function () {
     console.log('game create', this.sharedObject)
-    isWakingUp = true
     reset()
   },
   destroy: function () {
@@ -100,13 +116,15 @@ module.exports = {
   update: function () {
 
     if (isWakingUp) {
+      images.gubbe_standup_sprite.tick(1000/60)
       wakingUpCount--
       if (wakingUpCount < 0) {
         isWakingUp = false
       }
       return
-    } else if (isFallingAsleep) {
+    } else if (player.caughtBy !== null) {
       images.gubbe_putdown_sprite.tick(1000 / 60)
+      images.gubbe_taserd_sprite.tick(1000 / 60)
       return
     } else if (winningAnimationPlaying) {
       images.freedom_sprite.tick(1000 / 60)
@@ -161,38 +179,60 @@ module.exports = {
     }
 
     // trigger guard
-    if (player.distress > 520 && !guard1.isOnIt) {
-      guard1.isOnIt = true
+    if (player.distress > 520 && !isOnIt) {
+      isOnIt = true
 
-      guard1.isAtDoor = true
+      isAtDoor = true
       images.door_sprite.currentFrame = 1
 
     }
 
-    // shoot tranquilizer
-    if (guard1.isAtDoor) {
-      guard1.isWalking = false
-      if (guard1.shotCooldown < 0) {
-        shots.push(shotFactory(guard1.x, guard1.y, player.x, player.y))
-        guard1.shotCooldown = guard1.shotCooldownStart
-      } else if (guard1.shotCooldown > guard1.shotCooldownStart / 2) {
-        var dx = player.x - guard1.x
-        var dy = player.y - guard1.y
-        var angle = Math.atan2(dy, dx)
-        guard1.x += Math.cos(angle) * guard1.speed
-        guard1.y += Math.sin(angle) * guard1.speed
+    // shoot tranquilizer and walk guards
+    if (isAtDoor) {
 
-        images.guard_walking_sprite.tick(1000/60)
-        guard1.isWalking = true
+      var playerMiddleX = player.x - player.w / 2
+      var playerMiddleY = player.y - player.h / 2
 
-        if (dx > 0) {
-          guard1.direction = 'right'
-        } else {
-          guard1.direction = 'left'
+      for (var i = 0; i < guards.length; i++) {
+        var guard = guards[i]
+        guard.isWalking = false
+        if (guard.shotCooldown < 0) {
+          shots.push(shotFactory(guard.x, guard.y, player.x, player.y))
+          guard.shotCooldown = guard.shotCooldownStart
+        } else if (guard.shotCooldown > guard.shotCooldownStart / 2) {
+          var dx = player.x - guard.x
+          var dy = player.y - guard.y
+          var angle = Math.atan2(dy, dx)
+          guard.x += Math.cos(angle) * guard.speed
+          guard.y += Math.sin(angle) * guard.speed
+          guard.guard_walking_sprite.tick(1000/60)
+          guard.isWalking = true
+
+          if (dx > 0) {
+            guard.direction = 'right'
+          } else {
+            guard.direction = 'left'
+          }
         }
-      }
 
-      guard1.shotCooldown--
+        var a = guard.x - playerMiddleX
+        var b = guard.y - playerMiddleY
+        var deltaDistance = Math.sqrt(a * a + b * b)
+
+        if (deltaDistance < 64) {
+          player.caughtBy = 'taser'
+
+          guard.isTasering = true
+
+          setTimeout(function () {
+            reset()
+          }, 2800)
+
+          return
+        }
+
+        guard.shotCooldown--
+      }
     }
 
     // update shots
@@ -202,12 +242,11 @@ module.exports = {
       shot.y += Math.sin(shot.angle) * shot.speed
 
       if (isPointInsideRect(shot.x, shot.y, player.x, player.y, player.w, player.h)) {
-        isFallingAsleep = true
+        player.caughtBy = 'shot'
 
         images.gubbe_putdown_sprite.play()
 
         setTimeout(function () {
-          isWakingUp = true
           reset()
         }, 4000)
       }
@@ -222,11 +261,10 @@ module.exports = {
     images.emotions3_sprite.tick((1000 / 60) * player.distress / 100)
 
     // is player at win trigger
-    if (isPointInsideRect(player.x, player.y, 128 + 44, 32, 72, 64)) {
+    if (isAtDoor && isPointInsideRect(player.x, player.y, 128 + 44, 32, 72, 64)) {
       winningAnimationPlaying = true
       images.freedom_sprite.play()
       setTimeout(function () {
-        isWakingUp = true
         reset()
       }, 6000)
     }
@@ -248,9 +286,11 @@ module.exports = {
       renderingContext.translate(player.x, player.y - 64)
     }
 
-    if (isFallingAsleep) {
+    if (player.caughtBy === 'shot') {
       images.gubbe_putdown_sprite.draw(renderingContext)
-    } else if (!winningAnimationPlaying) {
+    } else if (player.caughtBy === 'taser') {
+      images.gubbe_taserd_sprite.draw(renderingContext)
+    } else if (!winningAnimationPlaying && !isWakingUp) {
       if (player.isWalking) {
         images.gubbe_walking_sprite.draw(renderingContext)
       } else {
@@ -260,7 +300,7 @@ module.exports = {
 
     renderingContext.restore()
 
-    if (!isFallingAsleep && !winningAnimationPlaying) {
+    if (player.caughtBy === null && !winningAnimationPlaying && !isWakingUp) {
       if (player.distress > 480) {
         renderingContext.save()
         renderingContext.translate(player.x, player.y - 76)
@@ -289,31 +329,43 @@ module.exports = {
       }
     }
 
-    if (guard1.isAtDoor) {
+    if (isAtDoor) {
 
       // renderingContext.fillStyle = '#FFFF00'
       // renderingContext.fillRect(128 + 44, 32, 72, 64)
 
-      renderingContext.save()
-      if (guard1.direction === 'left') {
-        renderingContext.translate(guard1.x + 64, guard1.y - 64)
-        renderingContext.scale(-1, 1)
-      } else {
-        renderingContext.translate(guard1.x, guard1.y - 64)
-      }
+      for (var i = 0; i < guards.length; i++) {
+        var guard = guards[i]
+        renderingContext.save()
+        if (guard.direction === 'left') {
+          renderingContext.translate(guard.x + 64, guard.y - 64)
+          renderingContext.scale(-1, 1)
+        } else {
+          renderingContext.translate(guard.x, guard.y - 64)
+        }
 
-      if (guard1.isWalking) {
-        images.guard_walking_sprite.draw(renderingContext)
-        renderingContext.restore()
-      } else {
-        renderingContext.restore()
-        renderingContext.drawImage(images.guard_stand, guard1.x, guard1.y - 64)
+        if (guard.isTasering) {
+          images.guard_tasering_sprite.draw(renderingContext)
+          renderingContext.restore()
+        } else if (guard.isWalking) {
+          guard.guard_walking_sprite.draw(renderingContext)
+          renderingContext.restore()
+        } else {
+          renderingContext.restore()
+          renderingContext.drawImage(images.guard_stand, guard.x, guard.y - 64)
+        }
       }
 
     }
 
 
     if (isWakingUp) {
+
+      renderingContext.save()
+      renderingContext.translate(player.x, player.y - 64)
+      images.gubbe_standup_sprite.draw(renderingContext)
+      renderingContext.restore()
+
       var alpha = wakingUpCount / wakingUpTime
       renderingContext.fillStyle = 'rgba(0, 0, 0, ' + alpha + ')'
       renderingContext.fillRect(0, 0, canvasWidth, canvasHeight)
