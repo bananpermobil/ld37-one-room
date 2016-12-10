@@ -1,74 +1,65 @@
-(function() {
-  var SpriteSheet = {};
+var SpriteSheet = {};
 
-  SpriteSheet.new = function(url, frameData) {
-    var spriteSheet = {};
+SpriteSheet.new = function(url, frameData) {
+  var spriteSheet = {};
 
-    spriteSheet.url = url;
-    spriteSheet.frameData = frameData;
-    spriteSheet.totalAnimationTime = 0;
+  spriteSheet.url = url;
+  spriteSheet.frameData = frameData;
+  spriteSheet.totalAnimationTime = 0;
+  spriteSheet.currentTick = 0;
+  spriteSheet.currentFrame = 0;
+  spriteSheet.playing = false || frameData.autoPlay;
+  spriteSheet.restart = false || frameData.restart;
+  spriteSheet.callback = frameData.callback || function() {};
+
+  for (var i = 0; i < spriteSheet.frameData.frames.length; i++) {
+    spriteSheet.totalAnimationTime = spriteSheet.totalAnimationTime + spriteSheet.frameData.frames[i];
+  }
+
+  spriteSheet.play = function() {
+    spriteSheet.playing = true;
+  };
+
+  spriteSheet.stop = function() {
+    spriteSheet.playing = false;
     spriteSheet.currentTick = 0;
     spriteSheet.currentFrame = 0;
-    spriteSheet.playing = false || frameData.autoPlay;
-    spriteSheet.restart = false || frameData.restart;
-    spriteSheet.callback = frameData.callback || function() {};
+  };
 
-    for (var i = 0; i < spriteSheet.frameData.frames.length; i++) {
-      spriteSheet.totalAnimationTime = spriteSheet.totalAnimationTime + spriteSheet.frameData.frames[i];
-    }
+  spriteSheet.pause = function() {
+    spriteSheet.playing = false;
+  };
 
-    spriteSheet.play = function() {
-      spriteSheet.playing = true;
-    };
+  spriteSheet.tick = function(delta) {
+    delta = delta || 16;
+    if (spriteSheet.playing) {
+      spriteSheet.currentTick = spriteSheet.currentTick + delta;
+      if (spriteSheet.currentTick > spriteSheet.frameData.frames[spriteSheet.currentFrame]) {
 
-    spriteSheet.stop = function() {
-      spriteSheet.playing = false;
-      spriteSheet.currentTick = 0;
-      spriteSheet.currentFrame = 0;
-    };
+        spriteSheet.currentTick = spriteSheet.currentTick - spriteSheet.frameData.frames[spriteSheet.currentFrame];
 
-    spriteSheet.pause = function() {
-      spriteSheet.playing = false;
-    };
+        spriteSheet.currentFrame = spriteSheet.currentFrame + 1;
 
-    spriteSheet.tick = function(delta) {
-      delta = delta || 16;
-      if (spriteSheet.playing) {
-        spriteSheet.currentTick = spriteSheet.currentTick + delta;
-        if (spriteSheet.currentTick > spriteSheet.frameData.frames[spriteSheet.currentFrame]) {
-
-          spriteSheet.currentTick = spriteSheet.currentTick - spriteSheet.frameData.frames[spriteSheet.currentFrame];
-
-          spriteSheet.currentFrame = spriteSheet.currentFrame + 1;
-
-          if (spriteSheet.currentFrame >= spriteSheet.frameData.frames.length ) {
-            spriteSheet.callback();
-            if ( spriteSheet.frameData.restart ) {
-              spriteSheet.currentFrame = 0;
-              spriteSheet.currentTick = 0;
-            } else {
-              spriteSheet.pause();
-              spriteSheet.currentFrame = spriteSheet.frameData.frames.length-1;
-            }
+        if (spriteSheet.currentFrame >= spriteSheet.frameData.frames.length ) {
+          spriteSheet.callback();
+          if ( spriteSheet.frameData.restart ) {
+            spriteSheet.currentFrame = 0;
+            spriteSheet.currentTick = 0;
+          } else {
+            spriteSheet.pause();
+            spriteSheet.currentFrame = spriteSheet.frameData.frames.length-1;
           }
         }
       }
+    }
 
-    };
-
-    spriteSheet.draw = function(context) {
-      context.drawImage(spriteSheet.url, spriteSheet.currentFrame * frameData.width, 0, frameData.width, frameData.height, frameData.x, frameData.y, frameData.width, frameData.height);
-    };
-
-    return spriteSheet;
   };
 
-  if (typeof define !== 'undefined') {
-    define('SpriteSheet', [], function() {
-      return SpriteSheet;
-    });
-  } else {
-    this.SpriteSheet = SpriteSheet;
-  }
+  spriteSheet.draw = function(context) {
+    context.drawImage(spriteSheet.url, spriteSheet.currentFrame * frameData.width, 0, frameData.width, frameData.height, frameData.x, frameData.y, frameData.width, frameData.height);
+  };
 
-}.call(this));
+  return spriteSheet;
+};
+
+module.exports = SpriteSheet
