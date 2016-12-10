@@ -1,0 +1,23 @@
+{
+  "name": "oneroom",
+  "version": "1.0.0",
+  "description": "One Room ldjam 37 compo",
+  "main": "src/js/index.js",
+  "scripts": {
+    "create-dist-dirs": "mkdir -p dist/js && mkdir -p dist/assets/images",
+    "copy-assets": "cp -r assets/* dist/assets/",
+    "prebuild": "rm -rf dist/ && npm run create-dist-dirs && npm run copy-assets && cp src/index.html dist/index.html",
+    "build": "browserify src/js/index.js -o dist/js/bundle.js",
+    "dev": "beefy src/js/index.js:js/bundle.js 1234 --index=src/index.html"
+  },
+  "author": "Fredrik Järnbröst",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "beefy": "^2.1.8",
+    "browserify": "^13.1.1"
+  },
+  "dependencies": {
+    "obscen": "^0.x",
+    "pixi.js": "^4.2.2"
+  }
+}
