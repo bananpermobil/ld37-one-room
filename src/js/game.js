@@ -31,7 +31,7 @@ var player = {
 
 var guardFactory = function () {
   var guard = JSON.parse(JSON.stringify({
-    shotCooldownStart: 67,
+    shotCooldownStart: 60 + 20 * Math.random(),
     shotCooldown: 67,
     x: 128 + 44 + (64 * Math.random()),
     y: 64 * Math.random(),
@@ -57,7 +57,7 @@ var shotFactory = function (x, y, targetX, targetY) {
     x: x,
     y: y,
     angle: angle,
-    speed: 50,
+    speed: 40,
   }
 }
 
@@ -283,7 +283,7 @@ module.exports = {
         var b = guard.y - playerMiddleY
         var deltaDistance = Math.sqrt(a * a + b * b)
 
-        if (deltaDistance < 64) {
+        if (deltaDistance < 100) {
           player.caughtBy = 'taser'
 
           guard.isTasering = true
@@ -390,7 +390,7 @@ module.exports = {
       for (var i = 0; i < shots.length; i++) {
         var shot = shots[i]
         renderingContext.beginPath()
-        renderingContext.arc(shot.x, shot.y, 3, 0, Math.PI * 2, false)
+        renderingContext.arc(shot.x, shot.y, 5, 0, Math.PI * 2, false)
         renderingContext.fillStyle = '#FF0000'
         renderingContext.fill()
         renderingContext.closePath()
