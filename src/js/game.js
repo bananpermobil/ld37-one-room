@@ -11,7 +11,7 @@ var wakingUpCount = wakingUpTime
 
 var winningAnimationPlaying = false
 
-var guardCount = 2
+var guardCount = 1
 
 var isOnIt = false
 var isAtDoor = false
@@ -125,6 +125,7 @@ module.exports = {
     } else if (player.caughtBy !== null) {
       images.gubbe_putdown_sprite.tick(1000 / 60)
       images.gubbe_taserd_sprite.tick(1000 / 60)
+      images.guard_tasering_sprite.tick(1000 / 60)
       return
     } else if (winningAnimationPlaying) {
       images.freedom_sprite.tick(1000 / 60)
@@ -223,6 +224,7 @@ module.exports = {
           player.caughtBy = 'taser'
 
           guard.isTasering = true
+          images.guard_tasering_sprite.play()
 
           setTimeout(function () {
             reset()
