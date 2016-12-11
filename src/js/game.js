@@ -1,6 +1,7 @@
 var userInput = require('../lib/userInput')
 var SpriteSheet = require('../lib/SpriteSheet')
 var images = require('./images')
+var sounds = require('./sounds')
 
 var canvasWidth = 1024
 var canvasHeight = 768
@@ -18,6 +19,8 @@ var isAtDoor = false
 
 var visareCount = 0
 var dismissedTime = 3000
+
+var fadingMusic1 = false
 
 var player = {
   x: 0,
@@ -131,6 +134,23 @@ var reset = function () {
   wakingUpCount = wakingUpTime
 
   visareCount = 0
+
+  sounds.music1.setTime(0)
+  sounds.music2.setTime(0)
+  sounds.music3.setTime(0)
+  sounds.music4.setTime(0)
+
+  fadingMusic1 = true
+
+  sounds.music1.fadeIn(5000, function () {
+    fadingMusic1 = false
+  })
+  sounds.music2.setVolume(0)
+  sounds.music3.setVolume(0)
+  sounds.music4.setVolume(0)
+
+  sounds.taser.stop()
+  sounds.putdown.stop()
 }
 
 module.exports = {
@@ -138,6 +158,11 @@ module.exports = {
   create: function () {
     console.log('game create', this.sharedObject)
     reset()
+
+    sounds.music1.play()
+    sounds.music2.play().setVolume(0)
+    sounds.music3.play().setVolume(0)
+    sounds.music4.play().setVolume(0)
   },
   destroy: function () {
     console.log('game destroy')
@@ -146,8 +171,13 @@ module.exports = {
   update: function () {
 
     if (visareCount > dismissedTime) {
+      // sounds.music1.stop()
+      sounds.music2.stop()
+      sounds.music3.stop()
+      sounds.music4.stop()
       this.changeScene('end')
       return
+
     } else if (isWakingUp) {
       images.gubbe_standup_sprite.tick(1000/60)
       wakingUpCount--
@@ -155,13 +185,26 @@ module.exports = {
         isWakingUp = false
       }
       return
+
     } else if (player.caughtBy !== null) {
       images.gubbe_putdown_sprite.tick(1000 / 60)
       images.gubbe_taserd_sprite.tick(1000 / 60)
       images.guard_tasering_sprite.tick(1000 / 60)
+
+      sounds.music1.setVolume(0)
+      sounds.music2.setVolume(0)
+      sounds.music3.setVolume(0)
+      sounds.music4.setVolume(0)
+
       return
+
     } else if (isFalseFreedom) {
       images.freedom_sprite.tick(1000 / 60)
+
+      sounds.music1.setVolume(0)
+      sounds.music2.setVolume(0)
+      sounds.music3.setVolume(0)
+      sounds.music4.setVolume(0)
       return
     }
 
@@ -309,7 +352,10 @@ module.exports = {
           guard.isTasering = true
           images.guard_tasering_sprite.play()
 
+          sounds.taser.play()
+
           setTimeout(function () {
+            sounds.taser.stop()
             reset()
           }, 2800)
 
@@ -336,8 +382,14 @@ module.exports = {
         images.gubbe_putdown_sprite.play()
 
         setTimeout(function () {
+          sounds.putdown.play()
+        })
+
+        setTimeout(function () {
           reset()
         }, 4000)
+
+        break
       }
     }
 
@@ -356,6 +408,29 @@ module.exports = {
       setTimeout(function () {
         reset()
       }, 6000)
+    }
+
+    if (player.distress > 480 || isAtDoor) {
+      sounds.music4.setVolume(100)
+      sounds.music1.setVolume(0)
+    } else {
+      sounds.music4.setVolume(0)
+
+      if (!fadingMusic1) {
+        sounds.music1.setVolume(100)
+      }
+    }
+
+    if (player.distress > 380 && !isAtDoor) {
+      sounds.music3.setVolume(100)
+    } else {
+      sounds.music3.setVolume(0)
+    }
+
+    if (player.distress > 90 && !isAtDoor) {
+      sounds.music2.setVolume(100)
+    } else {
+      sounds.music2.setVolume(0)
     }
 
   },
@@ -453,6 +528,29 @@ module.exports = {
     renderingContext.drawImage(images.visare, 0, 0)
     renderingContext.restore()
 
+    if ((isAtDoor && player.caughtBy === null) || (player.distress > 480 && !isAtDoor)) {
+      renderingContext.fillStyle = [
+        'rgba(255, 0, 0, 0.3)',
+        'rgba(255, 255, 255, 0.4)',
+        'rgba(0, 0, 0, 0.2)',
+      ][Math.floor(Math.random() * 2.99)]
+
+      renderingContext.fillRect(0, 0, canvasWidth, canvasHeight)
+
+      renderingContext.drawImage(images.scaryoverlay, 0, 0)
+    }
+
+    if (player.caughtBy === 'shot') {
+      renderingContext.fillStyle = 'rgba(255, 0, 0, 0.3)'
+      renderingContext.fillRect(0, 0, canvasWidth, canvasHeight)
+    } else if (player.caughtBy === 'taser') {
+
+      if (Math.random() < 0.3) {
+        renderingContext.fillStyle = 'rgba(240, 240, 255, 0.6)'
+        renderingContext.fillRect(0, 0, canvasWidth, canvasHeight)
+      }
+    }
+
     if (isWakingUp) {
 
       renderingContext.save()
@@ -466,6 +564,8 @@ module.exports = {
     }
 
     if (isFalseFreedom) {
+      renderingContext.fillStyle = '#000000'
+      renderingContext.fillRect(0, 0, canvasWidth, canvasHeight)
       renderingContext.save()
       renderingContext.translate(0, 141)
       images.freedom_sprite.draw(renderingContext)

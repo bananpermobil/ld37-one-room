@@ -3,6 +3,9 @@ var SpriteSheet = require('../lib/SpriteSheet')
 var bg = new Image();
 bg.src = "../../assets/images/bg.png";
 
+var scaryoverlay = new Image();
+scaryoverlay.src = "../../assets/images/scaryoverlay.png";
+
 var endbg = new Image();
 endbg.src = "../../assets/images/endbg.png";
 
@@ -171,6 +174,7 @@ var freedom_sprite = SpriteSheet.new(freedom, {
 module.exports = {
   bg: bg,
   endbg: endbg,
+  scaryoverlay: scaryoverlay,
   visare: visare,
   gubbe_stand_sprite: gubbe_stand_sprite,
   gubbe_standup_sprite: gubbe_standup_sprite,
