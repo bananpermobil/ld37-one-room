@@ -3,6 +3,12 @@ var SpriteSheet = require('../lib/SpriteSheet')
 var bg = new Image();
 bg.src = "../../assets/images/bg.png";
 
+var endbg = new Image();
+endbg.src = "../../assets/images/endbg.png";
+
+var visare = new Image();
+visare.src = "../../assets/images/visare.png";
+
 var guard_stand = new Image();
 guard_stand.src = "../../assets/images/guard_stand.png";
 
@@ -164,6 +170,8 @@ var freedom_sprite = SpriteSheet.new(freedom, {
 
 module.exports = {
   bg: bg,
+  endbg: endbg,
+  visare: visare,
   gubbe_stand_sprite: gubbe_stand_sprite,
   gubbe_standup_sprite: gubbe_standup_sprite,
   gubbe_walking_sprite: gubbe_walking_sprite,

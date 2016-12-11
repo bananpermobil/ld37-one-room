@@ -1,18 +1,16 @@
 var Ob = require('obscen')
 var gameScene = require('./game')
-// var splashScene = require('./splash')
-
-localStorage.debug = 'obscen:*'
+var endScene = require('./end')
 
 window.onload = function () {
   var game = new Ob.Scene(gameScene)
-  // var splash = new Ob.Scene(splashScene)
+  var end = new Ob.Scene(endScene)
 
   var sceneManager = new Ob.SceneManager()
 
   sceneManager.setScenes([
-    // splash,
     game,
+    end,
   ])
 
   sceneManager.changeScene('game')

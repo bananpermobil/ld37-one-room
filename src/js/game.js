@@ -9,12 +9,15 @@ var isWakingUp = false
 var wakingUpTime = 60 * 4.6
 var wakingUpCount = wakingUpTime
 
-var winningAnimationPlaying = false
+var isFalseFreedom = false
 
-var guardCount = 3
+var guardCount = 0
 
 var isOnIt = false
 var isAtDoor = false
+
+var visareCount = 0
+var dismissedTime = 3000
 
 var player = {
   x: 0,
@@ -91,6 +94,11 @@ var isPointInsideRect = function (x, y, rx, ry, rw, rh) {
 var shots = []
 
 var reset = function () {
+
+  if (player.caughtBy === null) {
+    guardCount++
+  }
+
   player.x = 900
   player.y = 400
   player.distress = 0
@@ -118,10 +126,11 @@ var reset = function () {
   isOnIt = false
   isAtDoor = false
   isWakingUp = true
-
-  winningAnimationPlaying = false
+  isFalseFreedom = false
 
   wakingUpCount = wakingUpTime
+
+  visareCount = 0
 }
 
 module.exports = {
@@ -136,7 +145,10 @@ module.exports = {
   },
   update: function () {
 
-    if (isWakingUp) {
+    if (visareCount > dismissedTime) {
+      this.changeScene('end')
+      return
+    } else if (isWakingUp) {
       images.gubbe_standup_sprite.tick(1000/60)
       wakingUpCount--
       if (wakingUpCount < 0) {
@@ -148,7 +160,7 @@ module.exports = {
       images.gubbe_taserd_sprite.tick(1000 / 60)
       images.guard_tasering_sprite.tick(1000 / 60)
       return
-    } else if (winningAnimationPlaying) {
+    } else if (isFalseFreedom) {
       images.freedom_sprite.tick(1000 / 60)
       return
     }
@@ -206,7 +218,15 @@ module.exports = {
 
       isAtDoor = true
       images.door_sprite.currentFrame = 1
+    }
 
+    // cap distress
+    if (player.distress > 1000) {
+      player.distress = 1000
+    }
+
+    if (!isAtDoor && !isOnIt) {
+      visareCount += (1000 - player.distress) / 1000
     }
 
     // shoot tranquilizer and walk guards
@@ -331,7 +351,7 @@ module.exports = {
 
     // is player at win trigger
     if (isAtDoor && isPointInsideRect(player.x, player.y, 128 + 44, 32, 72, 64)) {
-      winningAnimationPlaying = true
+      isFalseFreedom = true
       images.freedom_sprite.play()
       setTimeout(function () {
         reset()
@@ -359,7 +379,7 @@ module.exports = {
       images.gubbe_putdown_sprite.draw(renderingContext)
     } else if (player.caughtBy === 'taser') {
       images.gubbe_taserd_sprite.draw(renderingContext)
-    } else if (!winningAnimationPlaying && !isWakingUp) {
+    } else if (!isFalseFreedom && !isWakingUp) {
       if (player.isWalking) {
         images.gubbe_walking_sprite.draw(renderingContext)
       } else {
@@ -369,7 +389,7 @@ module.exports = {
 
     renderingContext.restore()
 
-    if (player.caughtBy === null && !winningAnimationPlaying && !isWakingUp) {
+    if (player.caughtBy === null && !isFalseFreedom && !isWakingUp) {
       if (player.distress > 480) {
         renderingContext.save()
         renderingContext.translate(player.x, player.y - 76)
@@ -425,9 +445,13 @@ module.exports = {
           renderingContext.restore()
         }
       }
-
     }
 
+    renderingContext.save()
+    renderingContext.translate(708, 21)
+    renderingContext.rotate(Math.PI * -0.5 + ((Math.PI * 2) / dismissedTime) * visareCount)
+    renderingContext.drawImage(images.visare, 0, 0)
+    renderingContext.restore()
 
     if (isWakingUp) {
 
@@ -441,7 +465,7 @@ module.exports = {
       renderingContext.fillRect(0, 0, canvasWidth, canvasHeight)
     }
 
-    if (winningAnimationPlaying) {
+    if (isFalseFreedom) {
       renderingContext.save()
       renderingContext.translate(0, 141)
       images.freedom_sprite.draw(renderingContext)
